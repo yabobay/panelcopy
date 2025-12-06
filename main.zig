@@ -1,6 +1,5 @@
 const std = @import("std");
 const stdout = std.fs.File.stdout().deprecatedWriter();
-const alloc = std.heap.smp_allocator;
 
 const magick = @cImport({
     @cDefine("MAGICKCORE_HDRI_ENABLE", "0");
@@ -14,6 +13,10 @@ const PanelCopyError = error{ FileNotFound, MagickReadError, MagickWriteError, W
 const Node = struct { data: [*:0]const u8, node: std.DoublyLinkedList.Node = .{} };
 
 pub fn main() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
     var ifiles: std.DoublyLinkedList = .{};
     var ofile: ?[*:0]const u8 = null;
 
