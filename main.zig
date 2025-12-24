@@ -1,5 +1,6 @@
 const std = @import("std");
 const stdout = std.fs.File.stdout().deprecatedWriter();
+const stderr = std.fs.File.stderr().deprecatedWriter();
 
 const magick = @cImport({
     @cDefine("MAGICKCORE_HDRI_ENABLE", "0");
@@ -11,6 +12,8 @@ const popt = @cImport(@cInclude("popt.h"));
 const PanelCopyError = error{ FileNotFound, MagickReadError, MagickWriteError, WeirdMagickError };
 
 const Node = struct { data: [*:0]const u8, node: std.DoublyLinkedList.Node = .{} };
+
+var verbose = true;
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -28,6 +31,8 @@ pub fn main() !void {
             if (ofile != null) return printHelp();
             ofile = args.next() orelse return printHelp();
             continue;
+        } else if (std.mem.eql(u8, arg, "-q") or std.mem.eql(u8, arg, "--quiet")) {
+            verbose = false;
         }
         if (arg[0] == '-')
             return printHelp();
@@ -45,9 +50,13 @@ pub fn main() !void {
     var diagnostic: ?[*:0]const u8 = null;
     if (spliceImages(&ifiles, false, &diagnostic)) |result| {
         defer _ = magick.DestroyMagickWand(result);
+        if (verbose)
+            try stdout.print("Writing to {?s}... ", .{ofile});
         const status = magick.MagickWriteImage(result, ofile);
         if (status == magick.MagickFalse)
             return PanelCopyError.MagickWriteError;
+        if (verbose)
+            try stdout.writeAll("done\n");
     } else |err| {
         defer _ = magick.RelinquishMagickMemory(@constCast(diagnostic));
         switch (err) {
@@ -60,7 +69,7 @@ pub fn main() !void {
 }
 
 fn printHelp() !void {
-    return stdout.writeAll("Usage: panelcopy IMAGES... -o OUTFILE\n");
+    return stdout.writeAll("Usage: panelcopy IMAGES... -o OUTFILE [-q|--quiet]\n");
 }
 
 fn spliceImages(filenames: *std.DoublyLinkedList, horizontal: bool, diagnostic: *?[*:0]const u8) !?*magick.MagickWand {
@@ -69,6 +78,8 @@ fn spliceImages(filenames: *std.DoublyLinkedList, horizontal: bool, diagnostic: 
     var it = filenames.first;
     while (it) |n| : (it = n.next) {
         const filename = @as(*Node, @fieldParentPtr("node", n)).data;
+        if (verbose)
+            try stdout.print("{s}\n", .{filename});
         const fd = std.c.fopen(filename, "r");
         if (fd == null) {
             diagnostic.* = filename;
@@ -86,6 +97,11 @@ fn spliceImages(filenames: *std.DoublyLinkedList, horizontal: bool, diagnostic: 
             return PanelCopyError.WeirdMagickError;
         }
     }
+    if (verbose)
+        try stderr.writeAll("Appending images... ");
     magick.MagickResetIterator(mwand);
-    return magick.MagickAppendImages(mwand, if (horizontal) magick.MagickFalse else magick.MagickTrue);
+    const retval = magick.MagickAppendImages(mwand, if (horizontal) magick.MagickFalse else magick.MagickTrue);
+    if (verbose)
+        try stderr.writeAll("done\n");
+    return retval;
 }
