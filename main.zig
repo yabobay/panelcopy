@@ -13,7 +13,7 @@ const PanelCopyError = error{ FileNotFound, MagickReadError, MagickWriteError, W
 
 const Node = struct { data: [*:0]const u8, node: std.DoublyLinkedList.Node = .{} };
 
-var verbose = true;
+var verbose = false;
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -31,8 +31,8 @@ pub fn main() !void {
             if (ofile != null) return printHelp();
             ofile = args.next() orelse return printHelp();
             continue;
-        } else if (std.mem.eql(u8, arg, "-q") or std.mem.eql(u8, arg, "--quiet")) {
-            verbose = false;
+        } else if (std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "--verbose")) {
+            verbose = true;
         }
         if (arg[0] == '-')
             return printHelp();
@@ -69,7 +69,7 @@ pub fn main() !void {
 }
 
 fn printHelp() !void {
-    return stdout.writeAll("Usage: panelcopy IMAGES... -o OUTFILE [-q|--quiet]\n");
+    return stdout.writeAll("Usage: panelcopy IMAGES... -o OUTFILE [-v|--verbose]\n");
 }
 
 fn spliceImages(filenames: *std.DoublyLinkedList, horizontal: bool, diagnostic: *?[*:0]const u8) !?*magick.MagickWand {
