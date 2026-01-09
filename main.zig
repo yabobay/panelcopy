@@ -7,8 +7,6 @@ const magick = @cImport({
     @cInclude("MagickWand/MagickWand.h");
 });
 
-const popt = @cImport(@cInclude("popt.h"));
-
 const PanelCopyError = error{ FileNotFound, MagickReadError, MagickWriteError, WeirdMagickError };
 
 const Node = struct { data: [*:0]const u8, node: std.DoublyLinkedList.Node = .{} };
