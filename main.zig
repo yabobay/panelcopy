@@ -28,15 +28,15 @@ pub fn main() !void {
         if (std.mem.eql(u8, arg, "-o") or std.mem.eql(u8, arg, "--output")) {
             if (ofile != null) return printHelp();
             ofile = args.next() orelse return printHelp();
-            continue;
         } else if (std.mem.eql(u8, arg, "-v") or std.mem.eql(u8, arg, "--verbose")) {
             verbose = true;
-        }
-        if (arg[0] == '-')
+        } else if (arg[0] == '-') {
             return printHelp();
-        var node = try alloc.alloc(Node, 1);
-        node[0] = .{ .data = arg };
-        ifiles.append(&node[0].node);
+        } else {
+            var node = try alloc.alloc(Node, 1);
+            node[0] = .{ .data = arg };
+            ifiles.append(&node[0].node);
+        }
     }
 
     if (ofile == null or ifiles.first == null)
